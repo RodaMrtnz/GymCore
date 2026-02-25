@@ -1,9 +1,13 @@
+using GymCore.Application.Interfaces;
+using GymCore.Application.Services;
+        
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<IUserService, UserService>();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

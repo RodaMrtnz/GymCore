@@ -11,10 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\GymCore.Application\GymCore.Application.csproj" />
     <ProjectReference Include="..\GymCore.Infrastructure\GymCore.Infrastructure.csproj" />
   </ItemGroup>
