@@ -8,7 +8,7 @@ public class User
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
 
-    public UserRole Role { get; set; } = UserRole.User;
+    public UserRole Role { get; set; } = UserRole.Client;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 }
