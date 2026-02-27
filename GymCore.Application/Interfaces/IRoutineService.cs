@@ -18,7 +18,7 @@ namespace GymCore.Application.Interfaces
         IEnumerable<RoutineResponse> GetMyRoutines(Guid clientId);
         IEnumerable<RoutineResponse> GetTrainerRoutines(Guid trainerId);
 
-        RoutineResponse Delete(Guid id);
+        void Delete(Guid id);
 
     }
 }

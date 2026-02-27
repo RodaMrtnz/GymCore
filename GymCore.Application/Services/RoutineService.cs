@@ -131,5 +131,6 @@ namespace GymCore.Application.Services
                 trainer.CreatedRoutines.RemoveAll(r => r.Id == routine.Id);
             _routines.RemoveAll(r => r.Id == id);
         }
+
     }
 }

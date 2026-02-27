@@ -119,8 +119,8 @@ public class RoutinesController : ControllerBase
     {
         try
         {
-            var deleted = _routineService.Delete(id);
-            return Ok(deleted);
+            _routineService.Delete(id);
+            return NoContent();
         }
         catch (ArgumentException ex)
         {
