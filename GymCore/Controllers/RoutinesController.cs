@@ -113,7 +113,8 @@ public class RoutinesController : ControllerBase
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
-
+    [Authorize(Roles = "Trainer")]
+    [HttpDelete("{id:guid}")]
     public IActionResult Delete(Guid id)
     {
         try
