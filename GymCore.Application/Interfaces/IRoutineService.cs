@@ -7,7 +7,7 @@ using GymCore.Application.DTOs.Routines;
 
 namespace GymCore.Application.Interfaces
 {
-    public class IRoutineService
+    public interface IRoutineService
     {
         IEnumerable<RoutineResponse> GetAll();
         
