@@ -1,5 +1,6 @@
 ﻿
 using GymCore.Application.DTOs.Users;
+using GymCore.Domain.Entities;
 
 
 namespace GymCore.Application.Interfaces;
@@ -12,4 +13,5 @@ public interface IUserService
     UserResponse Create(CreateUserRequest request);
 
     void AssignTrainer(AssignTrainerRequest request);
+    Trainer? GetTrainerById(Guid id);
 }

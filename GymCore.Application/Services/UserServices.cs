@@ -105,4 +105,8 @@ public class UserService : IUserService
         if (!trainer.Clients.Any(c => c.Id == client.Id))
             trainer.Clients.Add(client);
     }
+    public Trainer? GetTrainerById(Guid id)
+    {
+        return _trainers.FirstOrDefault(t => t.Id == id);
+    }
 }
