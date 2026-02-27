@@ -10,9 +10,10 @@ namespace GymCore.Application.Interfaces
     public class IRoutineService
     {
         IEnumerable<RoutineResponse> GetAll();
+        
         RoutineResponse? GetById(Guid id);
         RoutineResponse Create(CreateRoutineRequest request);
-        void AssignTrainer(AssignTrainerRequest request);
+        
         void AssignRoutine(AssignRoutineRequest request);
     }
 }
