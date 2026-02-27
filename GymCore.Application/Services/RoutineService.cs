@@ -39,10 +39,15 @@ namespace GymCore.Application.Services
             if (!trainer.CreatedRoutines.Any(r => r.Id == routine.Id))
                 throw new ArgumentException("Routine not created by this trainer.");
 
-        
-            if (client.TodaysRoutine != null)
+            if (client.TodaysRoutine != null && client.TodaysRoutine.Date.Date != DateTime.UtcNow.Date)
+            {
+                client.PreviousRoutines.Add(client.TodaysRoutine);
+                client.TodaysRoutine = null;
+            }
+            if (client.TodaysRoutine != null && client.TodaysRoutine.Date.Date == DateTime.UtcNow.Date)
                 throw new ArgumentException("Client already has a routine assigned for today.");
 
+            routine.Date = DateTime.UtcNow;
             client.TodaysRoutine = routine;
         }
 
@@ -79,7 +84,6 @@ namespace GymCore.Application.Services
             };
         }
         
-        }
 
         public IEnumerable<RoutineResponse> GetAll()
         {
@@ -96,6 +100,36 @@ namespace GymCore.Application.Services
             return _routines.Where(r => r.Id == id)
                 .Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!))
                 .FirstOrDefault();
+        }
+
+        public IEnumerable<RoutineResponse> GetMyRoutines(Guid clientId)
+        {
+            var client = _userService.GetClientById(clientId);
+            if (client == null)
+                throw new ArgumentException("Client not found.");
+            var routines = client.PreviousRoutines;
+            return routines.Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!));
+
+        }
+
+        public IEnumerable<RoutineResponse> GetTrainerRoutines(Guid trainerId)
+        {
+            var trainer = _userService.GetTrainerById(trainerId);
+            if (trainer == null)
+                throw new ArgumentException("Client not found.");
+            var routines = trainer.CreatedRoutines;
+            return routines.Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!));
+        }
+
+        public void Delete(Guid id)
+        {
+            var routine = _routines.FirstOrDefault(r => r.Id == id);
+            if (routine == null)
+                throw new ArgumentException("Routine not found.");
+            var trainer = _userService.GetTrainerById(routine.TrainerId);
+            if (trainer != null)
+                trainer.CreatedRoutines.RemoveAll(r => r.Id == routine.Id);
+            _routines.RemoveAll(r => r.Id == id);
         }
     }
 }

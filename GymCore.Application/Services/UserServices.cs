@@ -109,4 +109,9 @@ public class UserService : IUserService
     {
         return _trainers.FirstOrDefault(t => t.Id == id);
     }
+
+    public Client? GetClientById(Guid id)
+    {
+        return _clients.FirstOrDefault(c => c.Id == id);
+    }
 }

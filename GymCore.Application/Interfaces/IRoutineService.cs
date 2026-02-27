@@ -15,5 +15,10 @@ namespace GymCore.Application.Interfaces
         RoutineResponse Create(CreateRoutineRequest request);
         
         void AssignRoutine(AssignRoutineRequest request);
+        IEnumerable<RoutineResponse> GetMyRoutines(Guid clientId);
+        IEnumerable<RoutineResponse> GetTrainerRoutines(Guid trainerId);
+
+        RoutineResponse Delete(Guid id);
+
     }
 }

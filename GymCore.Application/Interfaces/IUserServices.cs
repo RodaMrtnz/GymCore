@@ -14,4 +14,5 @@ public interface IUserService
 
     void AssignTrainer(AssignTrainerRequest request);
     Trainer? GetTrainerById(Guid id);
+    Client? GetClientById(Guid id);
 }
