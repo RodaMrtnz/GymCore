@@ -1,14 +1,12 @@
 ﻿using GymCore.Domain.Enums;
-
+using Microsoft.AspNetCore.Identity;
+using System;
 namespace GymCore.Domain.Entities;
 
-public class User
+public class User: IdentityUser<Guid>
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
+   
     public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-
-    public UserRole Role { get; set; } = UserRole.Client;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 }

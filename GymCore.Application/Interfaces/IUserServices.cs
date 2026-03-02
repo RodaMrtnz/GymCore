@@ -1,18 +1,23 @@
 ﻿
 using GymCore.Application.DTOs.Users;
 using GymCore.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
 
 
 namespace GymCore.Application.Interfaces;
 
 public interface IUserService
 {
-    IEnumerable<UserResponse> GetAll();
-    IEnumerable<TrainerResponse> GetAllTrainers();
-    UserResponse? GetById(Guid id);
-    UserResponse Create(CreateUserRequest request);
+    Task<IEnumerable<UserResponse>> GetAllAsync();
+    Task<IEnumerable<UserResponse>> GetAllTrainersAsync();
+    Task<IEnumerable<UserResponse>> GetAllClientsAsync();
+    Task<UserResponse> CreateAsync(CreateUserRequest request);
 
-    void AssignTrainer(AssignTrainerRequest request);
-    Trainer? GetTrainerById(Guid id);
-    Client? GetClientById(Guid id);
+    Task AssignTrainerAsync(AssignTrainerRequest request);
+
+    Task<Trainer?> GetTrainerByIdAsync(Guid id);
+
+    Task<Client?> GetClientByIdAsync(Guid id);
+
+    Task AssignRoleAsync(User user, string role);
 }

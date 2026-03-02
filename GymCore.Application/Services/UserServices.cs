@@ -1,117 +1,151 @@
-﻿
-using GymCore.Application.DTOs.Users;
+﻿using GymCore.Application.DTOs.Users;
 using GymCore.Application.Interfaces;
 using GymCore.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace GymCore.Application.Services;
 
 public class UserService : IUserService
 {
-    // In-memory store (por ahora)
-    private static readonly List<User> _users = new();
-    private static readonly List<Client> _clients = new();
-    private static readonly List<Trainer> _trainers = new();
+    private readonly UserManager<User> _userManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
 
-    public IEnumerable<UserResponse> GetAll()
-        => _users.Select(MapToResponse);
-
-    public IEnumerable<TrainerResponse> GetAllTrainers()
-        => _trainers.Select(MapToResponse);
-
-    public UserResponse? GetById(Guid id)
-        => _users.Where(u => u.Id == id).Select(MapToResponse).FirstOrDefault();
-
-    public UserResponse Create(CreateUserRequest request)
+    public UserService(
+        UserManager<User> userManager,
+        RoleManager<IdentityRole<Guid>> roleManager)
     {
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
 
+    public async Task<IEnumerable<UserResponse>> GetAllAsync()
+    {
+        var users = await _userManager.Users.ToListAsync();
+        return users.Select(MapToResponse);
+    }
+
+    public async Task<IEnumerable<UserResponse>> GetAllTrainersAsync()
+    {
+        var trainers = await _userManager.Users
+            .OfType<Trainer>()
+            .ToListAsync();
+
+        return trainers.Select(MapToResponse);
+    }
+
+    public async Task<IEnumerable<UserResponse>> GetAllClientsAsync()
+    {
+        var clients = await _userManager.Users
+            .OfType<Client>()
+            .ToListAsync();
+
+        return clients.Select(MapToResponse);
+    }
+
+    public async Task<UserResponse> CreateAsync(CreateUserRequest request)
+    {
         if (string.IsNullOrWhiteSpace(request.FullName))
             throw new ArgumentException("FullName is required.");
-
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ArgumentException("Email is required.");
+        if (string.IsNullOrWhiteSpace(request.Password))
+            throw new ArgumentException("Password is required.");
 
-        if (_clients.Any(u => u.Email.Equals(request.Email, StringComparison.OrdinalIgnoreCase)))
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
             throw new ArgumentException("Email already exists.");
 
-        User user;
-        if (request.Role == Domain.Enums.UserRole.Client)
+        // Crear instancia según tipo (TPH)
+        User user = request.Role switch
         {
-            user = new Client
-            {
-                Id = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow,
-                FullName = request.FullName.Trim(),
-                Email = request.Email.Trim(),
-                Role = request.Role
-            };
-            _clients.Add((Client)user);
-        }
-        else if (request.Role == Domain.Enums.UserRole.Trainer)
+            Domain.Enums.UserRole.Client => new Client(),
+            Domain.Enums.UserRole.Trainer => new Trainer(),
+            _ => new User()
+        };
+
+        user.FullName = request.FullName;
+        user.Email = request.Email;
+        user.UserName = request.Email; // mejor usar email como username
+        user.CreatedAt = DateTime.UtcNow;
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+            throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+        var roleName = request.Role.ToString();
+        if (!await _roleManager.RoleExistsAsync(roleName))
         {
-            user = new Trainer
-            {
-                Id = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow,
-                FullName = request.FullName.Trim(),
-                Email = request.Email.Trim(),
-                Role = request.Role
-            };
-            _trainers.Add((Trainer)user);
+            var createRole = await _roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+            if (!createRole.Succeeded)
+                throw new Exception(string.Join(", ", createRole.Errors.Select(e => e.Description)));
         }
-        else
-        {
-            user = new User
-            {
-                Id = Guid.NewGuid(),
-                CreatedAt = DateTime.UtcNow,
-                FullName = request.FullName.Trim(),
-                Email = request.Email.Trim(),
-                Role = request.Role
-            };
-        }
-        _users.Add(user);
+
+        var roleResult = await _userManager.AddToRoleAsync(user, roleName);
+        if (!roleResult.Succeeded)
+            throw new Exception(string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+
         return MapToResponse(user);
     }
 
-    private static UserResponse MapToResponse(User u) => new()
+    public async Task AssignTrainerAsync(AssignTrainerRequest request)
     {
-        Id = u.Id,
-        FullName = u.FullName,
-        Email = u.Email,
-        Role = u.Role,
-        CreatedAt = u.CreatedAt
-    };
-    private static TrainerResponse MapToResponse(Trainer t) => new()
-    {
-        Id = t.Id,
-        FullName = t.FullName,
-        Email = t.Email,
-        Role = t.Role,
-        CreatedAt = t.CreatedAt,
-        ClientIds = t.Clients.Select(c => c.Id).ToList(),
-        CreatedRoutineIds = t.CreatedRoutines.Select(r => r.Id).ToList()
-    };
+        var trainer = await _userManager.Users
+            .OfType<Trainer>()
+            .FirstOrDefaultAsync(t => t.Id == request.TrainerId);
 
-    public void AssignTrainer(AssignTrainerRequest request)
-    {
-        var trainer = _trainers.FirstOrDefault(t => t.Id == request.TrainerId);
-        var client = _clients.FirstOrDefault(c => c.Id == request.ClientId);
+        var client = await _userManager.Users
+            .OfType<Client>()
+            .FirstOrDefaultAsync(c => c.Id == request.ClientId);
 
         if (trainer == null)
             throw new ArgumentException("Trainer not found.");
         if (client == null)
             throw new ArgumentException("Client not found.");
 
-        if (!trainer.Clients.Any(c => c.Id == client.Id))
-            trainer.Clients.Add(client);
-    }
-    public Trainer? GetTrainerById(Guid id)
-    {
-        return _trainers.FirstOrDefault(t => t.Id == id);
+        // Requiere Client.TrainerId
+        client.TrainerId = trainer.Id;
+
+        var updateResult = await _userManager.UpdateAsync(client);
+        if (!updateResult.Succeeded)
+            throw new Exception(string.Join(", ", updateResult.Errors.Select(e => e.Description)));
     }
 
-    public Client? GetClientById(Guid id)
+    public async Task<Trainer?> GetTrainerByIdAsync(Guid id)
     {
-        return _clients.FirstOrDefault(c => c.Id == id);
+        // Nota: Include puede funcionar si la relación está mapeada por EF
+        return await _userManager.Users
+            .OfType<Trainer>()
+            .Include(t => t.Clients)
+            .FirstOrDefaultAsync(t => t.Id == id);
     }
+
+    public async Task<Client?> GetClientByIdAsync(Guid id)
+    {
+        return await _userManager.Users
+            .OfType<Client>()
+            .Include(c => c.Trainer)
+            .FirstOrDefaultAsync(c => c.Id == id);
+    }
+
+    public async Task AssignRoleAsync(User user, string role)
+    {
+        var result = await _userManager.AddToRoleAsync(user, role);
+        if (!result.Succeeded)
+            throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+    }
+
+    private static UserResponse MapToResponse(User u) => new()
+    {
+        Id = u.Id,
+        FullName = u.FullName,
+        Email = u.Email!,
+        Role = u switch
+        {
+            Client => Domain.Enums.UserRole.Client,
+            Trainer => Domain.Enums.UserRole.Trainer,
+            _ => Domain.Enums.UserRole.Client
+        },
+        CreatedAt = u.CreatedAt
+    };
 }
