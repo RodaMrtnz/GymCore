@@ -9,7 +9,7 @@ namespace GymCore.Application.Interfaces;
 public interface IUserService
 {
     Task<IEnumerable<UserResponse>> GetAllAsync();
-    Task<IEnumerable<UserResponse>> GetAllTrainersAsync();
+    Task<IEnumerable<TrainerResponse>> GetAllTrainersAsync();
     Task<IEnumerable<UserResponse>> GetAllClientsAsync();
     Task<UserResponse> CreateAsync(CreateUserRequest request);
 

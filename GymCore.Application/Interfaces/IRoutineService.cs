@@ -9,14 +9,14 @@ namespace GymCore.Application.Interfaces
 {
     public interface IRoutineService
     {
-        IEnumerable<RoutineResponse> GetAll();
+        Task<IEnumerable<RoutineResponse>> GetAll();
         
-        RoutineResponse? GetById(Guid id);
-        RoutineResponse Create(CreateRoutineRequest request);
+        Task<RoutineResponse?> GetById(Guid id);
+        Task<RoutineResponse> Create(CreateRoutineRequest request);
         
         void AssignRoutine(AssignRoutineRequest request);
-        IEnumerable<RoutineResponse> GetMyRoutines(Guid clientId);
-        IEnumerable<RoutineResponse> GetTrainerRoutines(Guid trainerId);
+        Task<IEnumerable<RoutineResponse>> GetMyRoutines(Guid clientId);
+        Task<IEnumerable<RoutineResponse>> GetTrainerRoutines(Guid trainerId);
 
         void Delete(Guid id);
 

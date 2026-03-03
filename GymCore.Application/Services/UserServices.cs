@@ -25,13 +25,13 @@ public class UserService : IUserService
         return users.Select(MapToResponse);
     }
 
-    public async Task<IEnumerable<UserResponse>> GetAllTrainersAsync()
+    public async Task<IEnumerable<TrainerResponse>> GetAllTrainersAsync()
     {
         var trainers = await _userManager.Users
             .OfType<Trainer>()
             .ToListAsync();
 
-        return trainers.Select(MapToResponse);
+        return trainers.Select(MapToTrainerResponse);
     }
 
     public async Task<IEnumerable<UserResponse>> GetAllClientsAsync()
@@ -147,5 +147,14 @@ public class UserService : IUserService
             _ => Domain.Enums.UserRole.Client
         },
         CreatedAt = u.CreatedAt
+    };
+    private static TrainerResponse MapToTrainerResponse(Trainer t) => new()
+    {
+        Id = t.Id,
+        FullName = t.FullName,
+        Email = t.Email!,
+        CreatedAt = t.CreatedAt,
+        ClientIds = t.Clients?.Select(c => c.Id).ToList() ?? new List<Guid>(),
+        CreatedRoutineIds = t.CreatedRoutines?.Select(r => r.Id).ToList() ?? new List<Guid>()
     };
 }

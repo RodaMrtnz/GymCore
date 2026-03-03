@@ -13,21 +13,23 @@ namespace GymCore.Application.Services
     public class RoutineService : IRoutineService
     {
         private readonly IUserService _userService;
-        private static readonly List<Routine> _routines = new();
+        private readonly IRoutineRepository _routineRepository;
 
 
-        public RoutineService(IUserService userService)
+        public RoutineService(IUserService userService, IRoutineRepository routineRepository)
         {
+
             _userService = userService;
+            _routineRepository = routineRepository;
         }
 
-        public void AssignRoutine(AssignRoutineRequest request)
+        public async void AssignRoutine(AssignRoutineRequest request)
         {
-            var routine = _routines.FirstOrDefault(r => r.Id == request.RoutineId);
+            var routine = await _routineRepository.GetByIdAsync(request.RoutineId);
             if (routine == null)
                 throw new ArgumentException("Routine not found.");
 
-            var trainer = _userService.GetTrainerById(routine.TrainerId);
+            var trainer = await _userService.GetTrainerByIdAsync(routine.TrainerId);
             if (trainer == null)
                 throw new ArgumentException("Trainer not found.");
 
@@ -35,7 +37,7 @@ namespace GymCore.Application.Services
             if (client == null)
                 throw new ArgumentException("Client not assigned to this trainer.");
 
-         
+
             if (!trainer.CreatedRoutines.Any(r => r.Id == routine.Id))
                 throw new ArgumentException("Routine not created by this trainer.");
 
@@ -51,13 +53,13 @@ namespace GymCore.Application.Services
             client.TodaysRoutine = routine;
         }
 
-        public RoutineResponse Create(CreateRoutineRequest request)
+        public async Task<RoutineResponse> Create(CreateRoutineRequest request)
         {
-            var trainer = _userService.GetTrainerById(request.TrainerId);
+            var trainer = await _userService.GetTrainerByIdAsync(request.TrainerId);
             if (trainer == null)
                 throw new ArgumentException("Trainer not found.");
 
-            
+
             var routine = new Routine
             {
                 Id = Guid.NewGuid(),
@@ -68,7 +70,7 @@ namespace GymCore.Application.Services
                 Trainer = trainer
             };
 
-            _routines.Add(routine);
+            await _routineRepository.AddAsync(routine);
             trainer.CreatedRoutines.Add(routine);
 
             return MapToResponse(routine, trainer);
@@ -83,53 +85,67 @@ namespace GymCore.Application.Services
                 TrainerId = routine.TrainerId
             };
         }
-        
 
-        public IEnumerable<RoutineResponse> GetAll()
+
+        public async Task<IEnumerable<RoutineResponse>> GetAll()
         {
-            return _routines.Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!));
+            var routines = await _routineRepository.GetAllAsync();
+            var trainers = await _userService.GetAllTrainersAsync();
+            var responses = await Task.WhenAll(routines.Select(async r =>
+            {
+                var trainer = await _userService.GetTrainerByIdAsync(r.TrainerId);
+                return MapToResponse(r, trainer!);
+            }));
+
+            return responses;
         }
 
-        public IEnumerable<TrainerResponse> GetAvailableTrainers()
+
+        public async Task<RoutineResponse?> GetById(Guid id)
         {
-            return _userService.GetAllTrainers();
+            var rutine = await _routineRepository.GetByIdAsync(id);
+            if (rutine == null)
+                return null;
+            var trainer = await _userService.GetTrainerByIdAsync(rutine.TrainerId);
+            return MapToResponse(rutine, trainer!);
+
         }
 
-        public RoutineResponse? GetById(Guid id)
+        public async Task<IEnumerable<RoutineResponse>> GetMyRoutines(Guid clientId)
         {
-            return _routines.Where(r => r.Id == id)
-                .Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!))
-                .FirstOrDefault();
-        }
-
-        public IEnumerable<RoutineResponse> GetMyRoutines(Guid clientId)
-        {
-            var client = _userService.GetClientById(clientId);
+            var client = await _userService.GetClientByIdAsync(clientId);
             if (client == null)
                 throw new ArgumentException("Client not found.");
             var routines = client.PreviousRoutines;
-            return routines.Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!));
+            var responses = await Task.WhenAll(routines.Select(async r =>
+            {
+                var trainer = await _userService.GetTrainerByIdAsync(r.TrainerId);
+                return MapToResponse(r, trainer!);
+            }));
+
+            return responses;
 
         }
 
-        public IEnumerable<RoutineResponse> GetTrainerRoutines(Guid trainerId)
+        public async Task<IEnumerable<RoutineResponse>> GetTrainerRoutines(Guid trainerId)
         {
-            var trainer = _userService.GetTrainerById(trainerId);
+            var trainer = await _userService.GetTrainerByIdAsync(trainerId);
             if (trainer == null)
                 throw new ArgumentException("Client not found.");
-            var routines = trainer.CreatedRoutines;
-            return routines.Select(r => MapToResponse(r, _userService.GetTrainerById(r.TrainerId)!));
+            var routines = trainer.CreatedRoutines ?? new List<Routine>();
+            var responses = routines.Select(r => MapToResponse(r, trainer)).ToList();
+            return responses;
         }
 
-        public void Delete(Guid id)
+        public async void Delete(Guid id)
         {
-            var routine = _routines.FirstOrDefault(r => r.Id == id);
+            var routine = await _routineRepository.GetByIdAsync(id);
             if (routine == null)
                 throw new ArgumentException("Routine not found.");
-            var trainer = _userService.GetTrainerById(routine.TrainerId);
+            var trainer = await _userService.GetTrainerByIdAsync(routine.TrainerId);
             if (trainer != null)
                 trainer.CreatedRoutines.RemoveAll(r => r.Id == routine.Id);
-            _routines.RemoveAll(r => r.Id == id);
+            await _routineRepository.DeleteAsync(routine);
         }
 
     }

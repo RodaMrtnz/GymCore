@@ -1,6 +1,7 @@
 using GymCore.Application.Interfaces;
 using GymCore.Application.Services;
 using GymCore.Domain.Entities;
+using GymCore.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -54,7 +55,7 @@ builder.Services.AddSwaggerGen();
 
 // DI Application Services
 builder.Services.AddScoped<IUserService, UserService>();
-
+builder.Services.AddScoped<IRoutineRepository, RoutineRepository>();
 var app = builder.Build();
 
 // Seed roles (API layer)
