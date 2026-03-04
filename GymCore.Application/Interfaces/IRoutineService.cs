@@ -14,11 +14,11 @@ namespace GymCore.Application.Interfaces
         Task<RoutineResponse?> GetById(Guid id);
         Task<RoutineResponse> Create(CreateRoutineRequest request);
         
-        void AssignRoutine(AssignRoutineRequest request);
+        Task AssignRoutine(AssignRoutineRequest request);
         Task<IEnumerable<RoutineResponse>> GetMyRoutines(Guid clientId);
         Task<IEnumerable<RoutineResponse>> GetTrainerRoutines(Guid trainerId);
 
-        void Delete(Guid id);
+        Task Delete(Guid id);
 
     }
 }

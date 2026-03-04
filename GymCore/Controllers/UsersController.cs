@@ -21,21 +21,21 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetAll()
-        => Ok(_users.GetAll());
+    public async Task<IActionResult> GetAll()
+        => Ok(await _users.GetAllAsync());
 
     [HttpGet]
-    public IActionResult GetAllTrainers()
-        => Ok(_users.GetAllTrainers());
+    public async Task<IActionResult> GetAllTrainers()
+        => Ok(await _users.GetAllTrainersAsync());
 
 
-    [HttpGet("{id:guid}")]
-    public IActionResult GetById(Guid id)
+    [HttpGet("client/{id:guid}")]
+    public async Task<IActionResult> GetClientById(Guid id)
     {
         try
         {
-            var user = _users.GetById(id);
-            return user is null ? NotFound() : Ok(user);
+            var client = await _users.GetClientByIdAsync(id);
+            return client is null ? NotFound() : Ok(client);
         }
 
         catch (ArgumentException ex)
@@ -47,14 +47,52 @@ public class UsersController : ControllerBase
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
-    [Authorize(Roles = "Staff,Admin")]
-    [HttpPost]
-    public IActionResult Create([FromBody] CreateUserRequest request)
+    [HttpGet("trainer/{id:guid}")]
+    public async Task<IActionResult> GetTrainerById(Guid id)
     {
         try
         {
-            var created = _users.Create(request);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+            var trainer = await _users.GetTrainerByIdAsync(id);
+            return trainer is null ? NotFound() : Ok(trainer);
+        }
+
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
+    }
+
+    [Authorize(Roles = "Staff,Admin")]
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
+    {
+        try
+        {
+            var created = await _users.CreateAsync(request);
+        return CreatedAtAction(nameof(GetClientById), new { id = created.Id }, created);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, "An unexpected error occurred.");
+        }
+    }
+
+    [Authorize(Roles = "Staff,Admin")]
+    [HttpPost("trainer")]
+    public async Task<IActionResult> CreateTrainer([FromBody] CreateUserRequest request)
+    {
+        try
+        {
+            var created = await _users.CreateAsync(request);
+            return CreatedAtAction(nameof(GetTrainerById), new { id = created.Id }, created);
         }
         catch (ArgumentException ex)
         {
@@ -68,11 +106,11 @@ public class UsersController : ControllerBase
 
     [Authorize(Roles = "Staff,Admin")]
     [HttpPut("assign-trainer")]
-    public IActionResult AssignTrainer([FromBody] AssignTrainerRequest request)
+    public async Task<IActionResult> AssignTrainer([FromBody] AssignTrainerRequest request)
     {
         try
         {
-            _users.AssignTrainer(request);
+            await _users.AssignTrainerAsync(request);
             return NoContent();
         }
         catch (ArgumentException ex)

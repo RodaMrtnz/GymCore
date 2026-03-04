@@ -23,7 +23,7 @@ namespace GymCore.Application.Services
             _routineRepository = routineRepository;
         }
 
-        public async void AssignRoutine(AssignRoutineRequest request)
+        public async Task AssignRoutine(AssignRoutineRequest request)
         {
             var routine = await _routineRepository.GetByIdAsync(request.RoutineId);
             if (routine == null)
@@ -137,7 +137,7 @@ namespace GymCore.Application.Services
             return responses;
         }
 
-        public async void Delete(Guid id)
+        public async Task Delete(Guid id)
         {
             var routine = await _routineRepository.GetByIdAsync(id);
             if (routine == null)
