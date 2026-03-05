@@ -31,7 +31,7 @@ public class GymCoreDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid
             .HasMany(t => t.Clients)
             .WithOne(c => c.Trainer)
             .HasForeignKey(c => c.TrainerId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.NoAction);
     }
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Trainer> Trainers => Set<Trainer>();

@@ -3,6 +3,9 @@ using GymCore.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 namespace GymCore.API.Controllers;
 
@@ -14,17 +17,20 @@ public class UsersController : ControllerBase
 {
 
     private readonly IUserService _users;
+    private readonly IConfiguration _configuration;
 
-    public UsersController(IUserService users)
+
+    public UsersController(IUserService users, IConfiguration configuration)
     {
         _users = users;
+        _configuration = configuration;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
         => Ok(await _users.GetAllAsync());
 
-    [HttpGet]
+    [HttpGet("trainers")]
     public async Task<IActionResult> GetAllTrainers()
         => Ok(await _users.GetAllTrainersAsync());
 
@@ -117,5 +123,51 @@ public class UsersController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        // Aquí deberías validar las credenciales usando tu IUserService
+        var user = await _users.AuthenticateAsync(request.Email, request.Password);
+        if (user == null)
+            return Unauthorized("Invalid credentials");
+
+        // Genera el token JWT
+        var token = GenerateJwtToken(user);
+
+        return Ok(new { token });
+    }
+    private string GenerateJwtToken(UserResponse user)
+    {
+        var claims = new[]
+        {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new Claim(ClaimTypes.Name, user.FullName),
+        new Claim(ClaimTypes.Email, user.Email),
+        new Claim(ClaimTypes.Role, user.Role.ToString())
+    };
+
+        var jwtKey = _configuration["Jwt:Key"];
+        if (string.IsNullOrWhiteSpace(jwtKey))
+            throw new InvalidOperationException("JWT Key is not configured.");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var issuer = _configuration["Jwt:Issuer"];
+        var audience = _configuration["Jwt:Audience"];
+        if (string.IsNullOrWhiteSpace(issuer) || string.IsNullOrWhiteSpace(audience))
+            throw new InvalidOperationException("JWT Issuer or Audience is not configured.");
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: DateTime.Now.AddHours(2),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

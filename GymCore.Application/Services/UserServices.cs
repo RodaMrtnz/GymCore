@@ -1,6 +1,7 @@
 ﻿using GymCore.Application.DTOs.Users;
 using GymCore.Application.Interfaces;
 using GymCore.Domain.Entities;
+using GymCore.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -157,4 +158,31 @@ public class UserService : IUserService
         ClientIds = t.Clients?.Select(c => c.Id).ToList() ?? new List<Guid>(),
         CreatedRoutineIds = t.CreatedRoutines?.Select(r => r.Id).ToList() ?? new List<Guid>()
     };
+    public async Task<UserResponse?> AuthenticateAsync(string email, string password)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null) return null;
+
+        var isValid = await _userManager.CheckPasswordAsync(user, password);
+        if (!isValid) return null;
+
+        var roles = await _userManager.GetRolesAsync(user);
+        UserRole roleEnum = UserRole.Client; // Valor por defecto
+
+        if (roles.Contains(UserRole.Trainer.ToString()))
+            roleEnum = UserRole.Trainer;
+        else if (roles.Contains(UserRole.Staff.ToString()))
+            roleEnum = UserRole.Staff;
+        else if (roles.Contains(UserRole.Admin.ToString()))
+            roleEnum = UserRole.Admin;
+
+        return new UserResponse
+        {
+            Id = user.Id,
+            FullName = user.FullName,
+            Email = user.Email ?? string.Empty,
+            Role = roleEnum,
+            CreatedAt = user.CreatedAt
+        };
+    }
 }

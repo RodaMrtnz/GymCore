@@ -61,8 +61,10 @@ var app = builder.Build();
 // Seed roles (API layer)
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-    await IdentitySeeder.SeedRolesAsync(roleManager);
+    var services = scope.ServiceProvider;
+    var userManager = services.GetRequiredService<UserManager<User>>();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    await IdentitySeeder.SeedUsersAndRolesAsync(userManager, roleManager);
 }
 
 if (app.Environment.IsDevelopment())

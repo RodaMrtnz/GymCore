@@ -20,4 +20,7 @@ public interface IUserService
     Task<Client?> GetClientByIdAsync(Guid id);
 
     Task AssignRoleAsync(User user, string role);
+
+    Task<UserResponse?> AuthenticateAsync(string email, string password);
+
 }
