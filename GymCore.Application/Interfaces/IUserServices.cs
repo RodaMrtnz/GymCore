@@ -22,5 +22,7 @@ public interface IUserService
     Task AssignRoleAsync(User user, string role);
 
     Task<UserResponse?> AuthenticateAsync(string email, string password);
-
+    Task<TrainerResponse?> GetTrainerResponseByIdAsync(Guid id);
+    Task<IEnumerable<TrainerResponse>> GetAllTrainerResponsesAsync();
+    Task<TrainerResponse> CreateTrainerAsync(CreateTrainerRequest request);
 }
