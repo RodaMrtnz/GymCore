@@ -121,6 +121,7 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
+
     public async Task<Client?> GetClientByIdAsync(Guid id)
     {
         return await _userManager.Users
@@ -184,5 +185,65 @@ public class UserService : IUserService
             Role = roleEnum,
             CreatedAt = user.CreatedAt
         };
+    }
+
+    public async Task<TrainerResponse?> GetTrainerResponseByIdAsync(Guid id)
+    {
+        var trainer = await _userManager.Users
+        .OfType<Trainer>()
+        .Include(t => t.Clients)
+        .Include(t => t.CreatedRoutines)
+        .FirstOrDefaultAsync(t => t.Id == id);
+
+        if (trainer == null)
+            return null;
+
+        return MapToTrainerResponse(trainer);
+    }
+
+    public async Task<IEnumerable<TrainerResponse>> GetAllTrainerResponsesAsync()
+    {
+        var trainers = await _userManager.Users
+        .OfType<Trainer>()
+        .Include(t => t.Clients)
+        .Include(t => t.CreatedRoutines)
+        .ToListAsync();
+
+        return trainers.Select(MapToTrainerResponse);
+    }
+
+    public async Task<TrainerResponse> CreateTrainerAsync(CreateTrainerRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.FullName))
+            throw new ArgumentException("FullName is required.");
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("Email is required.");
+        if (string.IsNullOrWhiteSpace(request.Password))
+            throw new ArgumentException("Password is required.");
+
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+            throw new ArgumentException("Email already exists.");
+
+        
+        var trainer = new Trainer
+        {
+            FullName = request.FullName,
+            Email = request.Email,
+            UserName = string.IsNullOrWhiteSpace(request.UserName) ? request.Email : request.UserName,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var result = await _userManager.CreateAsync(trainer, request.Password);
+        if (!result.Succeeded)
+            throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+        var roleName = "Trainer";
+        if (!await _roleManager.RoleExistsAsync(roleName))
+            await _roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+
+        await _userManager.AddToRoleAsync(trainer, roleName);
+
+        return MapToTrainerResponse(trainer);
     }
 }

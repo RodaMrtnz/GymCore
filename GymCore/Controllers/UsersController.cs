@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace GymCore.API.Controllers;
 
@@ -18,12 +19,14 @@ public class UsersController : ControllerBase
 
     private readonly IUserService _users;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<UsersController> _logger;
 
 
-    public UsersController(IUserService users, IConfiguration configuration)
+    public UsersController(IUserService users, IConfiguration configuration, ILogger<UsersController> logger)
     {
         _users = users;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -32,7 +35,7 @@ public class UsersController : ControllerBase
 
     [HttpGet("trainers")]
     public async Task<IActionResult> GetAllTrainers()
-        => Ok(await _users.GetAllTrainersAsync());
+        => Ok(await _users.GetAllTrainerResponsesAsync());
 
 
     [HttpGet("client/{id:guid}")]
@@ -50,6 +53,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in GetClientById");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
@@ -58,7 +63,7 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var trainer = await _users.GetTrainerByIdAsync(id);
+            var trainer = await _users.GetTrainerResponseByIdAsync(id);
             return trainer is null ? NotFound() : Ok(trainer);
         }
 
@@ -68,6 +73,8 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in GetTrainerById");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
@@ -87,17 +94,19 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in Create");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
 
     [Authorize(Roles = "Staff,Admin")]
     [HttpPost("trainer")]
-    public async Task<IActionResult> CreateTrainer([FromBody] CreateUserRequest request)
+    public async Task<IActionResult> CreateTrainer([FromBody] CreateTrainerRequest request)
     {
         try
         {
-            var created = await _users.CreateAsync(request);
+            var created = await _users.CreateTrainerAsync(request);
             return CreatedAtAction(nameof(GetTrainerById), new { id = created.Id }, created);
         }
         catch (ArgumentException ex)
@@ -106,6 +115,7 @@ public class UsersController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in CreateTrainer");
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
@@ -121,6 +131,8 @@ public class UsersController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogError(ex, "Unexpected error in AssignTrainer");
+
             return BadRequest(ex.Message);
         }
     }

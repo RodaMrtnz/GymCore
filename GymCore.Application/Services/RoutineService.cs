@@ -71,6 +71,7 @@ namespace GymCore.Application.Services
             };
 
             await _routineRepository.AddAsync(routine);
+            await _routineRepository.SaveChangesAsync();
             trainer.CreatedRoutines.Add(routine);
 
             return MapToResponse(routine, trainer);
@@ -146,6 +147,7 @@ namespace GymCore.Application.Services
             if (trainer != null)
                 trainer.CreatedRoutines.RemoveAll(r => r.Id == routine.Id);
             await _routineRepository.DeleteAsync(routine);
+            await _routineRepository.SaveChangesAsync();
         }
 
     }

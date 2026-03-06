@@ -46,7 +46,16 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes("I7v$2pL!9zQw@4eR8sT#1xYc6bN%5uJm"))
     };
 });
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevCors", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173", "http://localhost:5174")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
@@ -56,6 +65,7 @@ builder.Services.AddSwaggerGen();
 // DI Application Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoutineRepository, RoutineRepository>();
+builder.Services.AddScoped<IRoutineService, RoutineService>();
 var app = builder.Build();
 
 // Seed roles (API layer)
@@ -72,12 +82,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
+app.UseCors("DevCors");
+if (app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+app.MapGet("/debug/cors", () => Results.Ok(new { ok = true }))
+   .AllowAnonymous();
 app.Run();

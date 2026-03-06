@@ -10,23 +10,26 @@ namespace GymCore.API.Controllers;
 public class RoutinesController : ControllerBase
 {
     private readonly IRoutineService _routineService;
+    private readonly ILogger<UsersController> _logger;
 
-    public RoutinesController(IRoutineService routineService)
+
+    public RoutinesController(IRoutineService routineService, ILogger<UsersController> logger)
     {
         _routineService = routineService;
+        _logger = logger;
     }
 
-    [Authorize(Roles = "Trainer")]
+    [Authorize(Roles = "Trainer, Admin")]
     [HttpGet]
-   public IActionResult GetAll()
-        => Ok(_routineService.GetAll());
+   public async Task<IActionResult> GetAll()
+        => Ok(await _routineService.GetAll());
 
     [HttpGet("{id:guid}")]
-    public IActionResult GetById(Guid id)
+    public async Task<IActionResult> GetById(Guid id)
     {
         try
         {
-            var routine = _routineService.GetById(id);
+            var routine = await _routineService.GetById(id);
         return routine is null ? NotFound() : Ok(routine);
         }
 
@@ -36,16 +39,18 @@ public class RoutinesController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in GetById");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
     [Authorize(Roles = "Client")]
     [HttpGet("my-routines/{clientId:guid}")]
-    public IActionResult GetMyRoutines(Guid clientId)
+    public async Task<IActionResult> GetMyRoutines(Guid clientId)
     {
         try
         {
-            var routines = _routineService.GetMyRoutines(clientId);
+            var routines = await _routineService.GetMyRoutines(clientId);
             return Ok(routines);
         }
         catch (ArgumentException ex)
@@ -54,6 +59,8 @@ public class RoutinesController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in GetMyRoutines");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
@@ -72,17 +79,20 @@ public class RoutinesController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in GetTrainerRoutines");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
 
-    [Authorize(Roles = "Trainer")]
+    [Authorize(Roles = "Trainer, Admin")]
     [HttpPost]
-    public IActionResult Create(CreateRoutineRequest request)
+    public async Task<IActionResult> Create(CreateRoutineRequest request)
     {
         try
         {
-            var created = _routineService.Create(request);
+            var created = await _routineService.Create(request);
+
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
         catch (ArgumentException ex)
@@ -91,17 +101,19 @@ public class RoutinesController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in Create");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
 
     [Authorize(Roles = "Trainer")]
     [HttpPut("assign-routine")]
-    public IActionResult AssignRoutine(AssignRoutineRequest request)
+    public async Task<IActionResult> AssignRoutine(AssignRoutineRequest request)
     {
         try
         {
-            _routineService.AssignRoutine(request);
+            await _routineService.AssignRoutine(request);
             return NoContent();
         }
         catch (ArgumentException ex)
@@ -110,16 +122,18 @@ public class RoutinesController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in AssignRoutine");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
     [Authorize(Roles = "Trainer")]
     [HttpDelete("{id:guid}")]
-    public IActionResult Delete(Guid id)
+    public async Task<IActionResult> Delete(Guid id)
     {
         try
         {
-            _routineService.Delete(id);
+            await _routineService.Delete(id);
             return NoContent();
         }
         catch (ArgumentException ex)
@@ -128,6 +142,8 @@ public class RoutinesController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error in Delete");
+
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
