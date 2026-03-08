@@ -1,4 +1,4 @@
-﻿using GymCore.Application.Interfaces;
+using GymCore.Application.Interfaces;
 using GymCore.Application.DTOs.Routines;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
@@ -10,10 +10,10 @@ namespace GymCore.API.Controllers;
 public class RoutinesController : ControllerBase
 {
     private readonly IRoutineService _routineService;
-    private readonly ILogger<UsersController> _logger;
+    private readonly ILogger<RoutinesController> _logger;
 
 
-    public RoutinesController(IRoutineService routineService, ILogger<UsersController> logger)
+    public RoutinesController(IRoutineService routineService, ILogger<RoutinesController> logger)
     {
         _routineService = routineService;
         _logger = logger;
@@ -44,7 +44,7 @@ public class RoutinesController : ControllerBase
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
-    [Authorize(Roles = "Client")]
+    [Authorize(Roles = "Client, Admin")]
     [HttpGet("my-routines/{clientId:guid}")]
     public async Task<IActionResult> GetMyRoutines(Guid clientId)
     {
@@ -64,13 +64,13 @@ public class RoutinesController : ControllerBase
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
-    [Authorize(Roles = "Trainer")]
+    [Authorize(Roles = "Trainer, Admin")]
     [HttpGet("trainer-routines/{trainerId:guid}")]
-    public IActionResult GetTrainerRoutines(Guid trainerId)
+    public async Task<IActionResult> GetTrainerRoutines(Guid trainerId)
     {
         try
         {
-            var routines = _routineService.GetTrainerRoutines(trainerId);
+            var routines = await _routineService.GetTrainerRoutines(trainerId);
             return Ok(routines);
         }
         catch (ArgumentException ex)
@@ -107,7 +107,7 @@ public class RoutinesController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Trainer")]
+    [Authorize(Roles = "Trainer, Admin")]
     [HttpPut("assign-routine")]
     public async Task<IActionResult> AssignRoutine(AssignRoutineRequest request)
     {
@@ -127,7 +127,7 @@ public class RoutinesController : ControllerBase
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
-    [Authorize(Roles = "Trainer")]
+    [Authorize(Roles = "Trainer, Admin")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -148,3 +148,4 @@ public class RoutinesController : ControllerBase
         }
     }
 }
+

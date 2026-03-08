@@ -13,7 +13,7 @@ namespace GymCore.Application.DTOs.Users
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
-        public List<Guid> ClientIds { get; set; } = new(); // IDs de los clientes asignados
-        public List<Guid> CreatedRoutineIds { get; set; } = new(); // IDs de rutinas creadas
+        public List<Guid> ClientIds { get; set; } = new(); // Assigned client IDs
+        public List<Guid> CreatedRoutineIds { get; set; } = new(); // Created routine IDs
     }
 }

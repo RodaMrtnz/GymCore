@@ -51,6 +51,8 @@ namespace GymCore.Application.Services
 
             routine.Date = DateTime.UtcNow;
             client.TodaysRoutine = routine;
+
+            await _routineRepository.SaveChangesAsync();
         }
 
         public async Task<RoutineResponse> Create(CreateRoutineRequest request)
@@ -83,6 +85,7 @@ namespace GymCore.Application.Services
                 Id = routine.Id,
                 Name = routine.Name,
                 Description = routine.Description,
+                Date = routine.Date,
                 TrainerId = routine.TrainerId
             };
         }
@@ -132,8 +135,12 @@ namespace GymCore.Application.Services
         {
             var trainer = await _userService.GetTrainerByIdAsync(trainerId);
             if (trainer == null)
-                throw new ArgumentException("Client not found.");
-            var routines = trainer.CreatedRoutines ?? new List<Routine>();
+                throw new ArgumentException("Trainer not found.");
+
+            var routines = (await _routineRepository.GetAllAsync())
+                .Where(r => r.TrainerId == trainerId)
+                .ToList();
+
             var responses = routines.Select(r => MapToResponse(r, trainer)).ToList();
             return responses;
         }

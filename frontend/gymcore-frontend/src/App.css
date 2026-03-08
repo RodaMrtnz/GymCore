@@ -19,6 +19,7 @@
   width: 100%;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid rgba(113, 203, 245, 0.45);
+  filter: drop-shadow(0 0 8px rgba(105, 199, 255, 1));
 }
 
 .title-logo {
@@ -32,6 +33,7 @@
   margin: 0;
   color: #9cdfff;
   border-bottom: 1px solid rgba(113, 203, 245, 0.15);
+  text-shadow: 0 0 18px rgba(0, 170, 255, 1);
 }
 
 .container p {
@@ -161,6 +163,20 @@ pre {
   border-radius: 0.6rem;
   padding: 0.65rem;
   background: rgba(3, 30, 49, 0.78);
+}
+
+.routine-item {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.routine-item button {
+  width: fit-content;
+}
+
+.routine-detail-card {
+  border-color: rgba(126, 216, 255, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(169, 226, 255, 0.15);
 }
 
 @media (max-width: 640px) {

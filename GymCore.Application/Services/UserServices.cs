@@ -114,10 +114,10 @@ public class UserService : IUserService
 
     public async Task<Trainer?> GetTrainerByIdAsync(Guid id)
     {
-        // Nota: Include puede funcionar si la relación está mapeada por EF
         return await _userManager.Users
             .OfType<Trainer>()
             .Include(t => t.Clients)
+            .Include(t => t.CreatedRoutines)
             .FirstOrDefaultAsync(t => t.Id == id);
     }
 
@@ -127,6 +127,8 @@ public class UserService : IUserService
         return await _userManager.Users
             .OfType<Client>()
             .Include(c => c.Trainer)
+            .Include(c => c.TodaysRoutine)
+            .Include(c => c.PreviousRoutines)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 

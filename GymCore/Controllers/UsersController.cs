@@ -32,12 +32,12 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
         => Ok(await _users.GetAllAsync());
-
+    [Authorize(Roles = "Admin, Staff")]
     [HttpGet("trainers")]
     public async Task<IActionResult> GetAllTrainers()
         => Ok(await _users.GetAllTrainerResponsesAsync());
 
-
+    [Authorize(Roles = "Admin, Staff, Trainer")]
     [HttpGet("client/{id:guid}")]
     public async Task<IActionResult> GetClientById(Guid id)
     {
@@ -58,6 +58,7 @@ public class UsersController : ControllerBase
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
+    [Authorize(Roles = "Admin, Staff, Trainer")]
     [HttpGet("trainer/{id:guid}")]
     public async Task<IActionResult> GetTrainerById(Guid id)
     {
@@ -140,12 +141,12 @@ public class UsersController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        // Aquí deberías validar las credenciales usando tu IUserService
+        // Validate credentials using IUserService
         var user = await _users.AuthenticateAsync(request.Email, request.Password);
         if (user == null)
             return Unauthorized("Invalid credentials");
 
-        // Genera el token JWT
+        // Generate the JWT token
         var token = GenerateJwtToken(user);
 
         return Ok(new { token });

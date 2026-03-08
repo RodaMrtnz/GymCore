@@ -27,7 +27,9 @@ export async function apiRequest(path, { method = 'GET', body, token, headers } 
     const message = typeof errorBody === 'string' && errorBody
       ? errorBody
       : errorBody?.message ?? `HTTP ${response.status}`
-    throw new Error(message)
+    const error = new Error(message)
+    error.status = response.status
+    throw error
   }
 
   if (response.status === 204) {

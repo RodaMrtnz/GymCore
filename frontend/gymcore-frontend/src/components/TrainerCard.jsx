@@ -3,7 +3,7 @@ function toText(value) {
   return String(value)
 }
 
-function TrainerCard({ trainer, routines, loadingRoutines, onViewRoutines }) {
+function TrainerCard({ trainer, routines, loadingRoutines, onViewRoutines, onOpenRoutine }) {
   const fullName = trainer?.fullName ?? trainer?.name
   const email = trainer?.email
 
@@ -31,9 +31,9 @@ function TrainerCard({ trainer, routines, loadingRoutines, onViewRoutines }) {
               <p>
                 <strong>Name:</strong> {toText(routine?.name)}
               </p>
-              <p>
-                <strong>Description:</strong> {toText(routine?.description)}
-              </p>
+              <button type="button" onClick={() => onOpenRoutine(routine, trainer)}>
+                Open
+              </button>
             </article>
           ))}
         </section>
