@@ -10,7 +10,7 @@ export async function login(email, password) {
   })
 
   if (!data?.token) {
-    throw new Error('El backend no devolvió token.')
+    throw new Error('The backend did not return a token.')
   }
 
   localStorage.setItem(TOKEN_KEY, data.token)
