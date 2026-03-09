@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using GymCore.Application.Services;
 
 namespace GymCore.API.Controllers;
 
@@ -183,4 +184,24 @@ public class UsersController : ControllerBase
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+    [Authorize(Roles = "Trainer, Admin")]
+    [HttpGet("trainer/{trainerId:guid}/clients")]
+    public async Task<IActionResult> GetTrainerClients(Guid trainerId)
+    {
+        try
+        {
+            var clients = await _users.GetTrainerClients(trainerId);
+            return Ok(clients);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in GetTrainerClients");
+            return StatusCode(500, "An unexpected error occurred.");
+        }
+    }
+
 }

@@ -25,4 +25,6 @@ public interface IUserService
     Task<TrainerResponse?> GetTrainerResponseByIdAsync(Guid id);
     Task<IEnumerable<TrainerResponse>> GetAllTrainerResponsesAsync();
     Task<TrainerResponse> CreateTrainerAsync(CreateTrainerRequest request);
+    Task<IEnumerable<ClientResponse>> GetTrainerClients(Guid trainerId);
+
 }

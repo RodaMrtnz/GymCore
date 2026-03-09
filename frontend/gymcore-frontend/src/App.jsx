@@ -1,57 +1,30 @@
 import { useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { getCurrentSession, login, logout } from './services/authService'
-import { getAllTrainers, getClientById, getTrainerById } from './services/usersService'
-import { getMyRoutines, getRoutineById, getTrainerRoutines } from './services/routinesService'
-import TrainerCard from './components/TrainerCard'
-import ClientRoutineCard from './components/ClientRoutineCard'
+import {
+  createClientUser,
+  createTrainerUser,
+  assignTrainer,
+  getAllClients,
+  getAllTrainers,
+  getClientById,
+  getTrainerById,
+  getTrainerClients,
+} from './services/usersService'
+import { assignRoutine, createRoutine, getMyRoutines, getRoutineById, getTrainerRoutines } from './services/routinesService'
+import {formatValue,getEntityId,normalizeIdList,normalizeRoutineList,toLabel,} from './utils/appHelpers'
+import { resetViewState } from './utils/appStateReset'
+import ActiveSessionCard from './components/ActiveSessionCard'
+import CreateRoutineSection from './components/CreateRoutineSection'
+import CreateUserSection from './components/CreateUserSection'
+import RoutinesSection from './components/RoutinesSection'
+import StatusMessages from './components/StatusMessages'
+import TodayRoutineSection from './components/TodayRoutineSection'
+import TrainerClientsSection from './components/TrainerClientsSection'
+import TrainersSection from './components/TrainersSection'
 import RoutineDetailPage from './pages/RoutineDetailPage'
 import gymCoreLogo from './assets/GymCoreLogo.png'
 import './App.css'
-
-function toLabel(key) {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function formatValue(value) {
-  if (value === null || value === undefined || value === '') return '-'
-  if (Array.isArray(value)) {
-    if (value.length === 0) return '-'
-    const parsed = value.map((item) => {
-      if (item === null || item === undefined) return '-'
-      if (typeof item === 'object') return JSON.stringify(item)
-      return String(item)
-    })
-    return parsed.join(', ')
-  }
-  if (typeof value === 'object') {
-    return JSON.stringify(value)
-  }
-  return String(value)
-}
-
-function getEntityId(value) {
-  return String(value?.id ?? value?.Id ?? value?._id ?? value?.userId ?? value?.trainerId ?? '')
-}
-
-function normalizeRoutineList(payload, trainer) {
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?.$values)) return payload.$values
-  if (Array.isArray(payload?.data)) return payload.data
-  if (Array.isArray(payload?.Data)) return payload.Data
-  if (Array.isArray(payload?.result)) return payload.result
-  if (Array.isArray(payload?.Result)) return payload.Result
-  if (Array.isArray(payload?.routines)) return payload.routines
-  if (Array.isArray(payload?.Routines)) return payload.Routines
-  if (Array.isArray(payload?.createdRoutines)) return payload.createdRoutines
-  if (Array.isArray(payload?.CreatedRoutines)) return payload.CreatedRoutines
-  if (Array.isArray(trainer?.createdRoutines)) return trainer.createdRoutines
-  return []
-}
 
 function App() {
   const navigate = useNavigate()
@@ -68,11 +41,63 @@ function App() {
   const [showTrainers, setShowTrainers] = useState(false)
   const [showRoutines, setShowRoutines] = useState(false)
   const [showTodayRoutine, setShowTodayRoutine] = useState(false)
+  const [showTrainerClients, setShowTrainerClients] = useState(false)
+  const [trainerClients, setTrainerClients] = useState([])
+  const [loadingTrainerClients, setLoadingTrainerClients] = useState(false)
   const [todayRoutine, setTodayRoutine] = useState(null)
   const [todayRoutineTrainer, setTodayRoutineTrainer] = useState(null)
   const [todayRoutineError, setTodayRoutineError] = useState('')
+  const [createRole, setCreateRole] = useState('Client')
+  const [createFullName, setCreateFullName] = useState('')
+  const [createEmail, setCreateEmail] = useState('')
+  const [createUserName, setCreateUserName] = useState('')
+  const [createPassword, setCreatePassword] = useState('')
+  const [creatingUser, setCreatingUser] = useState(false)
+  const [createUserMessage, setCreateUserMessage] = useState('')
+  const [assignClientIdByRoutineId, setAssignClientIdByRoutineId] = useState({})
+  const [assigningRoutineById, setAssigningRoutineById] = useState('')
+  const [assigningRoutineToAllById, setAssigningRoutineToAllById] = useState('')
+  const [assignRoutineMessage, setAssignRoutineMessage] = useState('')
+  const [assignTrainerClientIdByTrainerId, setAssignTrainerClientIdByTrainerId] = useState({})
+  const [assigningTrainerByTrainerId, setAssigningTrainerByTrainerId] = useState('')
+  const [assignTrainerMessage, setAssignTrainerMessage] = useState('')
+  const [routineName, setRoutineName] = useState('')
+  const [routineDescription, setRoutineDescription] = useState('')
+  const [routineTrainerId, setRoutineTrainerId] = useState('')
+  const [creatingRoutine, setCreatingRoutine] = useState(false)
+  const [createRoutineMessage, setCreateRoutineMessage] = useState('')
 
   const role = useMemo(() => session?.role ?? '', [session])
+
+  const stateResetSetters = {
+    setTrainers,
+    setRoutines,
+    setRoutinesTitle,
+    setTrainerRoutinesById,
+    setShowTrainers,
+    setShowRoutines,
+    setShowTodayRoutine,
+    setShowTrainerClients,
+    setTrainerClients,
+    setTodayRoutine,
+    setTodayRoutineTrainer,
+    setTodayRoutineError,
+    setCreateRole,
+    setCreateFullName,
+    setCreateEmail,
+    setCreateUserName,
+    setCreatePassword,
+    setCreateUserMessage,
+    setRoutineName,
+    setRoutineDescription,
+    setRoutineTrainerId,
+    setCreateRoutineMessage,
+    setAssignClientIdByRoutineId,
+    setAssignRoutineMessage,
+    setAssignTrainerClientIdByTrainerId,
+    setAssigningTrainerByTrainerId,
+    setAssignTrainerMessage,
+  }
 
   async function handleLogin(event) {
     event.preventDefault()
@@ -81,16 +106,7 @@ function App() {
     try {
       const nextSession = await login(email, password)
       setSession(nextSession)
-      setTrainers([])
-      setRoutines([])
-      setRoutinesTitle('Routines')
-      setTrainerRoutinesById({})
-      setShowTrainers(false)
-      setShowRoutines(false)
-      setShowTodayRoutine(false)
-      setTodayRoutine(null)
-      setTodayRoutineTrainer(null)
-      setTodayRoutineError('')
+      resetViewState(stateResetSetters)
     } catch (loginError) {
       setError(loginError.message)
     } finally {
@@ -100,6 +116,11 @@ function App() {
 
   async function loadTrainers() {
     if (!session?.token) return
+
+    if (role !== 'Admin' && role !== 'Staff') {
+      setError('Only Admin and Staff can view trainers')
+      return
+    }
 
     if (showTrainers) {
       setShowTrainers(false)
@@ -204,6 +225,87 @@ function App() {
     }
   }
 
+  async function loadTrainerClients() {
+    if (!session?.token || !session?.userId) return
+
+    if (showTrainerClients) {
+      setShowTrainerClients(false)
+      setTrainerClients([])
+      return
+    }
+
+    setError('')
+    setLoadingTrainerClients(true)
+    try {
+      const data = role === 'Trainer'
+        ? await getTrainerClients(session.token, session.userId)
+        : role === 'Admin' || role === 'Staff'
+          ? await getAllClients(session.token)
+          : null
+
+      if (!data) {
+        setError('You do not have permission to view clients')
+        return
+      }
+
+      const clients = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.$values)
+          ? data.$values
+          : []
+
+      setTrainerClients(clients)
+      setShowTrainerClients(true)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoadingTrainerClients(false)
+    }
+  }
+
+  async function handleAssignTrainerToClient(trainer, clientId) {
+    if (!session?.token) return
+
+    if (role !== 'Admin' && role !== 'Staff') {
+      setError('Only Admin and Staff can assign trainer')
+      return
+    }
+
+    const trainerId = getEntityId(trainer)
+    const trimmedClientId = String(clientId ?? '').trim()
+
+    if (!trainerId) {
+      setError('Could not identify the selected trainer')
+      return
+    }
+
+    if (!trimmedClientId) {
+      setError('Client ID is required')
+      return
+    }
+
+    setError('')
+    setAssignTrainerMessage('')
+    setAssigningTrainerByTrainerId(trainerId)
+
+    try {
+      await assignTrainer(session.token, {
+        ClientId: trimmedClientId,
+        TrainerId: trainerId,
+      })
+
+      setAssignTrainerMessage('Trainer assigned successfully')
+      setAssignTrainerClientIdByTrainerId((prev) => ({
+        ...prev,
+        [trainerId]: '',
+      }))
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setAssigningTrainerByTrainerId('')
+    }
+  }
+
   async function loadTodaysRoutineForClient() {
     if (!session?.token || !session?.userId) return
 
@@ -260,19 +362,179 @@ function App() {
     }
   }
 
+  async function handleCreateUser(event) {
+    event.preventDefault()
+    if (!session?.token) return
+
+    setError('')
+    setCreateUserMessage('')
+    setCreatingUser(true)
+
+    try {
+      if (createRole === 'Trainer') {
+        await createTrainerUser(session.token, {
+          FullName: createFullName,
+          Email: createEmail,
+          UserName: createUserName,
+          Password: createPassword,
+        })
+      } else {
+        await createClientUser(session.token, {
+          FullName: createFullName,
+          Email: createEmail,
+          UserName: createUserName,
+          Password: createPassword,
+          Role: 1,
+        })
+      }
+
+      setCreateUserMessage(`${createRole} created successfully`)
+      setCreateFullName('')
+      setCreateEmail('')
+      setCreateUserName('')
+      setCreatePassword('')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setCreatingUser(false)
+    }
+  }
+
+  async function handleCreateRoutine(event) {
+    event.preventDefault()
+    if (!session?.token) return
+
+    if (role !== 'Admin' && role !== 'Trainer') {
+      setError('Only Admin and Trainer can create routines')
+      return
+    }
+
+    const targetTrainerId = role === 'Trainer'
+      ? String(session.userId ?? '').trim()
+      : String(routineTrainerId ?? '').trim()
+
+    if (!targetTrainerId) {
+      setError('Trainer ID is required')
+      return
+    }
+
+    setError('')
+    setCreateRoutineMessage('')
+    setCreatingRoutine(true)
+
+    try {
+      await createRoutine(session.token, {
+        Nombre: routineName,
+        Descripcion: routineDescription,
+        TrainerId: targetTrainerId,
+      })
+
+      setCreateRoutineMessage('Routine created successfully')
+      setRoutineName('')
+      setRoutineDescription('')
+      if (role === 'Admin') {
+        setRoutineTrainerId('')
+      }
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setCreatingRoutine(false)
+    }
+  }
+
+  async function assignRoutineToClientById(routine, clientId) {
+    if (!session?.token) return
+
+    const routineId = getEntityId(routine)
+    const trimmedClientId = String(clientId ?? '').trim()
+
+    if (!routineId) {
+      setError('Could not identify the selected routine')
+      return
+    }
+
+    if (!trimmedClientId) {
+      setError('Client ID is required')
+      return
+    }
+
+    setError('')
+    setAssignRoutineMessage('')
+    setAssigningRoutineById(routineId)
+
+    try {
+      await assignRoutine(session.token, {
+        ClientId: trimmedClientId,
+        RoutineId: routineId,
+      })
+
+      setAssignRoutineMessage('Routine assigned successfully')
+      setAssignClientIdByRoutineId((prev) => ({
+        ...prev,
+        [routineId]: '',
+      }))
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setAssigningRoutineById('')
+    }
+  }
+
+  async function assignRoutineToAllClients(routine) {
+    if (!session?.token || !session?.userId) return
+
+    const routineId = getEntityId(routine)
+    if (!routineId) {
+      setError('Could not identify the selected routine')
+      return
+    }
+
+    setError('')
+    setAssignRoutineMessage('')
+    setAssigningRoutineToAllById(routineId)
+
+    try {
+      const trainerData = await getTrainerById(session.token, session.userId)
+      const clientIds = normalizeIdList(trainerData?.clientIds ?? trainerData?.ClientIds)
+
+      if (clientIds.length === 0) {
+        setAssignRoutineMessage('This trainer has no clients assigned')
+        return
+      }
+
+      const assignmentResults = await Promise.all(
+        clientIds.map(async (clientId) => {
+          try {
+            await assignRoutine(session.token, {
+              ClientId: clientId,
+              RoutineId: routineId,
+            })
+            return { ok: true }
+          } catch {
+            return { ok: false }
+          }
+        }),
+      )
+
+      const successCount = assignmentResults.filter((result) => result.ok).length
+      const failedCount = assignmentResults.length - successCount
+
+      if (failedCount === 0) {
+        setAssignRoutineMessage(`Routine assigned to ${successCount} clients`)
+      } else {
+        setAssignRoutineMessage(`Assigned to ${successCount} clients, failed for ${failedCount}`)
+      }
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setAssigningRoutineToAllById('')
+    }
+  }
+
   function handleLogout() {
     logout()
     setSession(null)
-    setTrainers([])
-    setRoutines([])
-    setRoutinesTitle('Routines')
-    setTrainerRoutinesById({})
-    setShowTrainers(false)
-    setShowRoutines(false)
-    setShowTodayRoutine(false)
-    setTodayRoutine(null)
-    setTodayRoutineTrainer(null)
-    setTodayRoutineError('')
+    resetViewState(stateResetSetters)
     setEmail('')
     setPassword('')
     setError('')
@@ -292,6 +554,28 @@ function App() {
         trainer,
       },
     })
+  }
+
+  function handleAssignClientIdChange(routineId, value) {
+    setAssignClientIdByRoutineId((prev) => ({
+      ...prev,
+      [routineId]: value,
+    }))
+  }
+
+  function handleAssignTrainerClientIdChange(trainerId, value) {
+    setAssignTrainerClientIdByTrainerId((prev) => ({
+      ...prev,
+      [trainerId]: value,
+    }))
+  }
+
+  function handleDismissStatusMessage() {
+    setError('')
+    setCreateUserMessage('')
+    setCreateRoutineMessage('')
+    setAssignRoutineMessage('')
+    setAssignTrainerMessage('')
   }
 
   return (
@@ -327,112 +611,103 @@ function App() {
                 </button>
               </form>
             ) : (
-              <section className="card">
-                <h2>Active session</h2>
-                <p><strong>Name:</strong> {session.fullName ?? '-'}</p>
-                <p><strong>Email:</strong> {session.email ?? '-'}</p>
-                <p><strong>Role:</strong> {role || '-'}</p>
-
-                <div className="actions">
-                  {role !== 'Client' || role === 'Trainer' && (
-                    <button type="button" onClick={loadTrainers}>View trainers</button>
-                  )}
-
-                  {role === 'Trainer' && (
-                    <button type="button" onClick={loadRoutines}>View routines</button>
-                  )}
-
-                  {role === 'Client' && (
-                    <button type="button" onClick={loadTodaysRoutineForClient}>View today routine</button>
-                  )}
-
-                  {role === 'Client' && (
-                    <button type="button" onClick={loadPreviousRoutinesForClient}>View previous routines</button>
-                  )}
-
-                  <button type="button" onClick={handleLogout}>Sign out</button>
-                </div>
-              </section>
+              <ActiveSessionCard
+                session={session}
+                role={role}
+                onViewTrainers={loadTrainers}
+                onViewRoutines={loadRoutines}
+                onViewClients={loadTrainerClients}
+                onViewTodayRoutine={loadTodaysRoutineForClient}
+                onViewPreviousRoutines={loadPreviousRoutinesForClient}
+                onSignOut={handleLogout}
+              />
             )}
 
-            {error && <p className="error">{error}</p>}
+            <StatusMessages
+              error={error}
+              createUserMessage={createUserMessage}
+              createRoutineMessage={createRoutineMessage}
+              assignRoutineMessage={assignRoutineMessage}
+              assignTrainerMessage={assignTrainerMessage}
+              onDismiss={handleDismissStatusMessage}
+            />
 
-            {showTrainers && trainers.length > 0 && (
-              <section className="card">
-                <h2>Trainers</h2>
-                <div className="list">
-                  {trainers.map((trainer, index) => {
-                    const trainerId = getEntityId(trainer)
-                    return (
-                      <TrainerCard
-                        key={trainerId || index}
-                        trainer={trainer}
-                        routines={trainerRoutinesById[trainerId] ?? []}
-                        loadingRoutines={loadingTrainerRoutinesId === trainerId}
-                        onViewRoutines={loadRoutinesForTrainer}
-                        onOpenRoutine={openRoutineDetail}
-                      />
-                    )
-                  })}
-                </div>
-              </section>
+            {(role === 'Admin' || role === 'Trainer') && session && (
+              <CreateRoutineSection
+                role={role}
+                routineName={routineName}
+                routineDescription={routineDescription}
+                routineTrainerId={routineTrainerId}
+                creatingRoutine={creatingRoutine}
+                onRoutineNameChange={setRoutineName}
+                onRoutineDescriptionChange={setRoutineDescription}
+                onRoutineTrainerIdChange={setRoutineTrainerId}
+                onSubmit={handleCreateRoutine}
+              />
             )}
 
-            {role === 'Client' && showTodayRoutine && (
-              <section className="card">
-                <h2>Today routine</h2>
-
-                {todayRoutine ? (
-                  <div className="list">
-                    <ClientRoutineCard
-                      routine={todayRoutine}
-                      onOpen={(nextRoutine) => openRoutineDetail(nextRoutine, todayRoutineTrainer)}
-                    />
-                  </div>
-                ) : (
-                  <p>{todayRoutineError || 'No routine assigned for today'}</p>
-                )}
-              </section>
+            {(role === 'Admin' || role === 'Staff') && session && (
+              <CreateUserSection
+                createRole={createRole}
+                createFullName={createFullName}
+                createEmail={createEmail}
+                createUserName={createUserName}
+                createPassword={createPassword}
+                creatingUser={creatingUser}
+                onRoleChange={setCreateRole}
+                onFullNameChange={setCreateFullName}
+                onEmailChange={setCreateEmail}
+                onUserNameChange={setCreateUserName}
+                onPasswordChange={setCreatePassword}
+                onSubmit={handleCreateUser}
+              />
             )}
 
-            {showRoutines && routines.length > 0 && (
-              <section className="card">
-                <h2>{routinesTitle}</h2>
-                <div className="list">
-                  {routines.map((routine, index) => (
-                    role === 'Client' ? (
-                      <ClientRoutineCard
-                        key={routine?.id ?? routine?._id ?? index}
-                        routine={routine}
-                        onOpen={(nextRoutine) => openRoutineDetail(nextRoutine, null)}
-                      />
-                    ) : (
-                      <article className="item-card" key={routine?.id ?? routine?._id ?? index}>
-                        {Object.entries(routine ?? {}).map(([key, value]) => (
-                          <p key={key}>
-                            <strong>{toLabel(key)}:</strong> {formatValue(value)}
-                          </p>
-                        ))}
-                      </article>
-                    )
-                  ))}
-                </div>
-              </section>
-            )}
+            <TrainersSection
+              showTrainers={showTrainers}
+              trainers={trainers}
+              trainerRoutinesById={trainerRoutinesById}
+              loadingTrainerRoutinesId={loadingTrainerRoutinesId}
+              assigningTrainerByTrainerId={assigningTrainerByTrainerId}
+              assignTrainerClientIdByTrainerId={assignTrainerClientIdByTrainerId}
+              onViewRoutines={loadRoutinesForTrainer}
+              onOpenRoutine={openRoutineDetail}
+              onAssignClientIdChange={handleAssignTrainerClientIdChange}
+              onAssignTrainer={handleAssignTrainerToClient}
+            />
 
-            {role === 'Trainer' && showRoutines && routines.length === 0 && (
-              <section className="card">
-                <h2>Routines</h2>
-                <p>No routines found for this trainer.</p>
-              </section>
-            )}
-            
-            {role === 'Client' && showRoutines && routinesTitle === 'Previous routines' && routines.length === 0 && (
-              <section className="card">
-                <h2>Previous routines</h2>
-                <p>No previous routines found.</p>
-              </section>
-            )}
+            <TodayRoutineSection
+              role={role}
+              showTodayRoutine={showTodayRoutine}
+              todayRoutine={todayRoutine}
+              todayRoutineTrainer={todayRoutineTrainer}
+              todayRoutineError={todayRoutineError}
+              onOpenRoutine={openRoutineDetail}
+            />
+
+            <TrainerClientsSection
+              role={role}
+              showTrainerClients={showTrainerClients}
+              loadingTrainerClients={loadingTrainerClients}
+              trainerClients={trainerClients}
+              onOpenRoutine={openRoutineDetail}
+            />
+
+            <RoutinesSection
+              role={role}
+              showRoutines={showRoutines}
+              routines={routines}
+              routinesTitle={routinesTitle}
+              assignClientIdByRoutineId={assignClientIdByRoutineId}
+              assigningRoutineById={assigningRoutineById}
+              assigningRoutineToAllById={assigningRoutineToAllById}
+              onOpenRoutine={openRoutineDetail}
+              onAssignClientIdChange={handleAssignClientIdChange}
+              onAssignByClientId={assignRoutineToClientById}
+              onAssignToAll={assignRoutineToAllClients}
+              toLabel={toLabel}
+              formatValue={formatValue}
+            />
           </main>
         }
       />

@@ -1,3 +1,5 @@
+import { applyResponseMiddlewares, authErrorMiddleware } from './apiMiddleware'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5156'
 
 async function parseResponse(response) {
@@ -12,6 +14,8 @@ async function parseResponse(response) {
 }
 
 export async function apiRequest(path, { method = 'GET', body, token, headers } = {}) {
+  const responseMiddlewares = [authErrorMiddleware]
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
@@ -24,9 +28,19 @@ export async function apiRequest(path, { method = 'GET', body, token, headers } 
 
   if (!response.ok) {
     const errorBody = await parseResponse(response)
-    const message = typeof errorBody === 'string' && errorBody
+    const middlewareContext = applyResponseMiddlewares(
+      {
+        path,
+        method,
+        response,
+        errorBody,
+      },
+      responseMiddlewares,
+    )
+
+    const message = middlewareContext.errorMessage || (typeof errorBody === 'string' && errorBody
       ? errorBody
-      : errorBody?.message ?? `HTTP ${response.status}`
+      : errorBody?.message ?? `HTTP ${response.status}`)
     const error = new Error(message)
     error.status = response.status
     throw error

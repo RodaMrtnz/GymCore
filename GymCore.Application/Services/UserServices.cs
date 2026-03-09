@@ -1,4 +1,5 @@
-﻿using GymCore.Application.DTOs.Users;
+﻿using GymCore.Application.DTOs.Routines;
+using GymCore.Application.DTOs.Users;
 using GymCore.Application.Interfaces;
 using GymCore.Domain.Entities;
 using GymCore.Domain.Enums;
@@ -93,6 +94,7 @@ public class UserService : IUserService
     {
         var trainer = await _userManager.Users
             .OfType<Trainer>()
+            .Include(t => t.Clients)
             .FirstOrDefaultAsync(t => t.Id == request.TrainerId);
 
         var client = await _userManager.Users
@@ -107,6 +109,11 @@ public class UserService : IUserService
         // Requiere Client.TrainerId
         client.TrainerId = trainer.Id;
 
+        if (!trainer.Clients.Any(c => c.Id == client.Id))
+        {
+            trainer.Clients.Add(client);
+            await _userManager.UpdateAsync(trainer);
+        }
         var updateResult = await _userManager.UpdateAsync(client);
         if (!updateResult.Succeeded)
             throw new Exception(string.Join(", ", updateResult.Errors.Select(e => e.Description)));
@@ -248,4 +255,36 @@ public class UserService : IUserService
 
         return MapToTrainerResponse(trainer);
     }
+    public async Task<IEnumerable<ClientResponse>> GetTrainerClients(Guid trainerId)
+    {
+        var trainer = await _userManager.Users
+            .OfType<Trainer>()
+            .Include(t => t.Clients)
+                .ThenInclude(c => c.TodaysRoutine)
+            .FirstOrDefaultAsync(t => t.Id == trainerId);
+
+        if (trainer == null)
+            throw new ArgumentException("Trainer not found.");
+
+        return trainer.Clients.Select(c => new ClientResponse
+        {
+            Id = c.Id,
+            FullName = c.FullName,
+            Email = c.Email,
+            CreatedAt = c.CreatedAt,
+            TrainerId = c.TrainerId,
+            TodaysRoutine = c.TodaysRoutine != null
+                ? new RoutineResponse
+                {
+                    Id = c.TodaysRoutine.Id,
+                    Name = c.TodaysRoutine.Name,
+                    Description = c.TodaysRoutine.Description,
+                    Date = c.TodaysRoutine.Date,
+                    TrainerId = c.TodaysRoutine.TrainerId
+                }
+                : null
+        });
+    }
+
+
 }
