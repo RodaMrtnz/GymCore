@@ -4,11 +4,13 @@ function TrainerOwnRoutineCard({
   routine,
   assigningRoutineById,
   assigningRoutineToAllById,
+  deletingRoutineId,
   assignClientId,
   onAssignClientIdChange,
   onOpen,
   onAssignByClientId,
   onAssignToAll,
+  onDelete,
   formatValue,
 }) {
   const routineId = getEntityId(routine)
@@ -25,6 +27,13 @@ function TrainerOwnRoutineCard({
       <div className="actions">
         <button type="button" onClick={() => onOpen(routine, null)}>
           Open
+        </button>
+        <button
+          type="button"
+          disabled={deletingRoutineId === routineId}
+          onClick={() => onDelete(routine)}
+        >
+          {deletingRoutineId === routineId ? 'Deleting...' : 'Delete'}
         </button>
       </div>
 

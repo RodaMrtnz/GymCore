@@ -6,6 +6,7 @@ function ActiveSessionCard({
   onViewClients,
   onViewTodayRoutine,
   onViewPreviousRoutines,
+  onEditUser,
   onSignOut,
 }) {
   return (
@@ -38,6 +39,10 @@ function ActiveSessionCard({
 
         {role === 'Client' ? (
           <button type="button" onClick={onViewPreviousRoutines}>View previous routines</button>
+        ) : null}
+
+        {role === 'Client' || role === 'Admin' || role === 'Staff' ? (
+          <button type="button" onClick={onEditUser}>Edit user</button>
         ) : null}
 
         <button type="button" onClick={onSignOut}>Sign out</button>

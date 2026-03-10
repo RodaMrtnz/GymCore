@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 function StatusMessages({
   error,
   createUserMessage,
+  updateUserMessage,
   createRoutineMessage,
   assignRoutineMessage,
   assignTrainerMessage,
@@ -10,12 +11,13 @@ function StatusMessages({
 }) {
   const message = useMemo(() => (
     error
+    || updateUserMessage
     || assignTrainerMessage
     || assignRoutineMessage
     || createRoutineMessage
     || createUserMessage
     || ''
-  ), [error, assignTrainerMessage, assignRoutineMessage, createRoutineMessage, createUserMessage])
+  ), [error, updateUserMessage, assignTrainerMessage, assignRoutineMessage, createRoutineMessage, createUserMessage])
 
   if (!message) {
     return null

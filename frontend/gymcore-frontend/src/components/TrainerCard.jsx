@@ -1,3 +1,5 @@
+import { getEntityId } from '../utils/appHelpers'
+
 function toText(value) {
   if (value === null || value === undefined || value === '') return '-'
   return String(value)
@@ -8,11 +10,14 @@ function TrainerCard({
   routines,
   loadingRoutines,
   assigningTrainer,
+  canDeleteRoutines,
+  deletingRoutineId,
   assignClientId,
   onViewRoutines,
   onOpenRoutine,
   onAssignClientIdChange,
   onAssignTrainer,
+  onDeleteRoutine,
 }) {
   const fullName = trainer?.fullName ?? trainer?.name
   const email = trainer?.email
@@ -53,16 +58,31 @@ function TrainerCard({
 
       {routines.length > 0 && (
         <section className="trainer-routines">
-          {routines.map((routine, index) => (
-            <article className="routine-item" key={routine?.id ?? routine?._id ?? index}>
-              <p>
-                <strong>Name:</strong> {toText(routine?.name)}
-              </p>
-              <button type="button" onClick={() => onOpenRoutine(routine, trainer)}>
-                Open
-              </button>
-            </article>
-          ))}
+          {routines.map((routine, index) => {
+            const routineId = getEntityId(routine)
+
+            return (
+              <article className="routine-item" key={routineId || index}>
+                <p>
+                  <strong>Name:</strong> {toText(routine?.name)}
+                </p>
+                <div className="actions">
+                  <button type="button" onClick={() => onOpenRoutine(routine, trainer)}>
+                    Open
+                  </button>
+                  {canDeleteRoutines && (
+                    <button
+                      type="button"
+                      disabled={deletingRoutineId === routineId}
+                      onClick={() => onDeleteRoutine(routine)}
+                    >
+                      {deletingRoutineId === routineId ? 'Deleting...' : 'Delete'}
+                    </button>
+                  )}
+                </div>
+              </article>
+            )
+          })}
         </section>
       )}
     </article>

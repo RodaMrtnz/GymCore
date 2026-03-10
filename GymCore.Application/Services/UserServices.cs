@@ -90,6 +90,52 @@ public class UserService : IUserService
         return MapToResponse(user);
     }
 
+    public async Task<UserResponse> UpdateAsync(Guid id, UpdateUserRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null)
+            throw new ArgumentException("User not found.");
+
+        var hasAnyChange = false;
+
+        if (!string.IsNullOrWhiteSpace(request.FullName))
+        {
+            user.FullName = request.FullName.Trim();
+            hasAnyChange = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var nextEmail = request.Email.Trim();
+            var existingByEmail = await _userManager.FindByEmailAsync(nextEmail);
+            if (existingByEmail != null && existingByEmail.Id != user.Id)
+                throw new ArgumentException("Email already exists.");
+
+            user.Email = nextEmail;
+            hasAnyChange = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.UserName))
+        {
+            var nextUserName = request.UserName.Trim();
+            var existingByUserName = await _userManager.FindByNameAsync(nextUserName);
+            if (existingByUserName != null && existingByUserName.Id != user.Id)
+                throw new ArgumentException("UserName already exists.");
+
+            user.UserName = nextUserName;
+            hasAnyChange = true;
+        }
+
+        if (!hasAnyChange)
+            throw new ArgumentException("At least one field must be provided to update.");
+
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+            throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+        return MapToResponse(user);
+    }
+
     public async Task AssignTrainerAsync(AssignTrainerRequest request)
     {
         var trainer = await _userManager.Users
@@ -137,6 +183,36 @@ public class UserService : IUserService
             .Include(c => c.TodaysRoutine)
             .Include(c => c.PreviousRoutines)
             .FirstOrDefaultAsync(c => c.Id == id);
+    }
+
+    public async Task<ClientResponse?> GetClientResponseByIdAsync(Guid id)
+    {
+        var client = await _userManager.Users
+            .OfType<Client>()
+            .Include(c => c.TodaysRoutine)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (client == null)
+            return null;
+
+        return new ClientResponse
+        {
+            Id = client.Id,
+            FullName = client.FullName,
+            Email = client.Email,
+            CreatedAt = client.CreatedAt,
+            TrainerId = client.TrainerId,
+            TodaysRoutine = client.TodaysRoutine != null
+                ? new RoutineResponse
+                {
+                    Id = client.TodaysRoutine.Id,
+                    Name = client.TodaysRoutine.Name,
+                    Description = client.TodaysRoutine.Description,
+                    Date = client.TodaysRoutine.Date,
+                    TrainerId = client.TodaysRoutine.TrainerId
+                }
+                : null
+        };
     }
 
     public async Task AssignRoleAsync(User user, string role)

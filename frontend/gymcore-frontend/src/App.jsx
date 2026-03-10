@@ -10,13 +10,15 @@ import {
   getClientById,
   getTrainerById,
   getTrainerClients,
+  updateUser,
 } from './services/usersService'
-import { assignRoutine, createRoutine, getMyRoutines, getRoutineById, getTrainerRoutines } from './services/routinesService'
+import { assignRoutine, createRoutine, deleteRoutine, getMyRoutines, getRoutineById, getTrainerRoutines } from './services/routinesService'
 import {formatValue,getEntityId,normalizeIdList,normalizeRoutineList,toLabel,} from './utils/appHelpers'
 import { resetViewState } from './utils/appStateReset'
 import ActiveSessionCard from './components/ActiveSessionCard'
 import CreateRoutineSection from './components/CreateRoutineSection'
 import CreateUserSection from './components/CreateUserSection'
+import EditUserSection from './components/EditUserSection'
 import RoutinesSection from './components/RoutinesSection'
 import StatusMessages from './components/StatusMessages'
 import TodayRoutineSection from './components/TodayRoutineSection'
@@ -54,9 +56,17 @@ function App() {
   const [createPassword, setCreatePassword] = useState('')
   const [creatingUser, setCreatingUser] = useState(false)
   const [createUserMessage, setCreateUserMessage] = useState('')
+  const [showEditUser, setShowEditUser] = useState(false)
+  const [editTargetUserId, setEditTargetUserId] = useState('')
+  const [editFullName, setEditFullName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editUserName, setEditUserName] = useState('')
+  const [updatingUser, setUpdatingUser] = useState(false)
+  const [updateUserMessage, setUpdateUserMessage] = useState('')
   const [assignClientIdByRoutineId, setAssignClientIdByRoutineId] = useState({})
   const [assigningRoutineById, setAssigningRoutineById] = useState('')
   const [assigningRoutineToAllById, setAssigningRoutineToAllById] = useState('')
+  const [deletingRoutineId, setDeletingRoutineId] = useState('')
   const [assignRoutineMessage, setAssignRoutineMessage] = useState('')
   const [assignTrainerClientIdByTrainerId, setAssignTrainerClientIdByTrainerId] = useState({})
   const [assigningTrainerByTrainerId, setAssigningTrainerByTrainerId] = useState('')
@@ -88,6 +98,12 @@ function App() {
     setCreateUserName,
     setCreatePassword,
     setCreateUserMessage,
+    setShowEditUser,
+    setEditTargetUserId,
+    setEditFullName,
+    setEditEmail,
+    setEditUserName,
+    setUpdateUserMessage,
     setRoutineName,
     setRoutineDescription,
     setRoutineTrainerId,
@@ -400,6 +416,74 @@ function App() {
     }
   }
 
+  function handleOpenEditUser() {
+    if (!session?.userId) return
+
+    if (showEditUser) {
+      setShowEditUser(false)
+      return
+    }
+
+    setError('')
+    setUpdateUserMessage('')
+    setEditFullName('')
+    setEditEmail('')
+    setEditUserName('')
+    setEditTargetUserId(role === 'Client' ? String(session.userId) : '')
+    setShowEditUser(true)
+  }
+
+  async function handleUpdateUser(event) {
+    event.preventDefault()
+    if (!session?.token || !session?.userId) return
+
+    if (role !== 'Client' && role !== 'Admin' && role !== 'Staff') {
+      setError('You do not have permission to edit users')
+      return
+    }
+
+    const targetUserId = role === 'Client'
+      ? String(session.userId)
+      : String(editTargetUserId ?? '').trim() || String(session.userId)
+
+    const payload = {}
+    if (String(editFullName ?? '').trim()) payload.FullName = String(editFullName).trim()
+    if (String(editEmail ?? '').trim()) payload.Email = String(editEmail).trim()
+    if (String(editUserName ?? '').trim()) payload.UserName = String(editUserName).trim()
+
+    if (Object.keys(payload).length === 0) {
+      setError('Provide at least one field to update')
+      return
+    }
+
+    setError('')
+    setUpdateUserMessage('')
+    setUpdatingUser(true)
+
+    try {
+      const updated = await updateUser(session.token, targetUserId, payload)
+      setUpdateUserMessage('User updated successfully')
+
+      if (targetUserId === String(session.userId)) {
+        setSession((prev) => (prev
+          ? {
+              ...prev,
+              fullName: updated?.fullName ?? updated?.FullName ?? prev.fullName,
+              email: updated?.email ?? updated?.Email ?? prev.email,
+            }
+          : prev))
+      }
+
+      setEditFullName('')
+      setEditEmail('')
+      setEditUserName('')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setUpdatingUser(false)
+    }
+  }
+
   async function handleCreateRoutine(event) {
     event.preventDefault()
     if (!session?.token) return
@@ -531,6 +615,49 @@ function App() {
     }
   }
 
+  async function handleDeleteRoutine(routine) {
+    if (!session?.token) return
+
+    if (role !== 'Admin' && role !== 'Trainer') {
+      setError('Only Admin and Trainer can delete routines')
+      return
+    }
+
+    const routineId = getEntityId(routine)
+    if (!routineId) {
+      setError('Could not identify the selected routine')
+      return
+    }
+
+    const shouldDelete = window.confirm('Are you sure you want to delete this routine?')
+    if (!shouldDelete) {
+      return
+    }
+
+    setError('')
+    setAssignRoutineMessage('')
+    setDeletingRoutineId(routineId)
+
+    try {
+      await deleteRoutine(session.token, routineId)
+
+      setRoutines((prev) => prev.filter((item) => getEntityId(item) !== routineId))
+      setTrainerRoutinesById((prev) => {
+        const next = {}
+        Object.entries(prev).forEach(([trainerId, trainerRoutines]) => {
+          next[trainerId] = (trainerRoutines ?? []).filter((item) => getEntityId(item) !== routineId)
+        })
+        return next
+      })
+
+      setAssignRoutineMessage('Routine deleted successfully')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setDeletingRoutineId('')
+    }
+  }
+
   function handleLogout() {
     logout()
     setSession(null)
@@ -573,6 +700,7 @@ function App() {
   function handleDismissStatusMessage() {
     setError('')
     setCreateUserMessage('')
+    setUpdateUserMessage('')
     setCreateRoutineMessage('')
     setAssignRoutineMessage('')
     setAssignTrainerMessage('')
@@ -619,6 +747,7 @@ function App() {
                 onViewClients={loadTrainerClients}
                 onViewTodayRoutine={loadTodaysRoutineForClient}
                 onViewPreviousRoutines={loadPreviousRoutinesForClient}
+                onEditUser={handleOpenEditUser}
                 onSignOut={handleLogout}
               />
             )}
@@ -626,11 +755,28 @@ function App() {
             <StatusMessages
               error={error}
               createUserMessage={createUserMessage}
+              updateUserMessage={updateUserMessage}
               createRoutineMessage={createRoutineMessage}
               assignRoutineMessage={assignRoutineMessage}
               assignTrainerMessage={assignTrainerMessage}
               onDismiss={handleDismissStatusMessage}
             />
+
+            {(role === 'Client' || role === 'Admin' || role === 'Staff') && session && showEditUser && (
+              <EditUserSection
+                role={role}
+                editTargetUserId={editTargetUserId}
+                editFullName={editFullName}
+                editEmail={editEmail}
+                editUserName={editUserName}
+                updatingUser={updatingUser}
+                onTargetUserIdChange={setEditTargetUserId}
+                onFullNameChange={setEditFullName}
+                onEmailChange={setEditEmail}
+                onUserNameChange={setEditUserName}
+                onSubmit={handleUpdateUser}
+              />
+            )}
 
             {(role === 'Admin' || role === 'Trainer') && session && (
               <CreateRoutineSection
@@ -664,16 +810,19 @@ function App() {
             )}
 
             <TrainersSection
+              role={role}
               showTrainers={showTrainers}
               trainers={trainers}
               trainerRoutinesById={trainerRoutinesById}
               loadingTrainerRoutinesId={loadingTrainerRoutinesId}
               assigningTrainerByTrainerId={assigningTrainerByTrainerId}
+              deletingRoutineId={deletingRoutineId}
               assignTrainerClientIdByTrainerId={assignTrainerClientIdByTrainerId}
               onViewRoutines={loadRoutinesForTrainer}
               onOpenRoutine={openRoutineDetail}
               onAssignClientIdChange={handleAssignTrainerClientIdChange}
               onAssignTrainer={handleAssignTrainerToClient}
+              onDeleteRoutine={handleDeleteRoutine}
             />
 
             <TodayRoutineSection
@@ -701,10 +850,12 @@ function App() {
               assignClientIdByRoutineId={assignClientIdByRoutineId}
               assigningRoutineById={assigningRoutineById}
               assigningRoutineToAllById={assigningRoutineToAllById}
+              deletingRoutineId={deletingRoutineId}
               onOpenRoutine={openRoutineDetail}
               onAssignClientIdChange={handleAssignClientIdChange}
               onAssignByClientId={assignRoutineToClientById}
               onAssignToAll={assignRoutineToAllClients}
+              onDeleteRoutine={handleDeleteRoutine}
               toLabel={toLabel}
               formatValue={formatValue}
             />

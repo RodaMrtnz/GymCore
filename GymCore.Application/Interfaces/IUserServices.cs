@@ -12,12 +12,14 @@ public interface IUserService
     Task<IEnumerable<TrainerResponse>> GetAllTrainersAsync();
     Task<IEnumerable<UserResponse>> GetAllClientsAsync();
     Task<UserResponse> CreateAsync(CreateUserRequest request);
+    Task<UserResponse> UpdateAsync(Guid id, UpdateUserRequest request);
 
     Task AssignTrainerAsync(AssignTrainerRequest request);
 
     Task<Trainer?> GetTrainerByIdAsync(Guid id);
 
     Task<Client?> GetClientByIdAsync(Guid id);
+    Task<ClientResponse?> GetClientResponseByIdAsync(Guid id);
 
     Task AssignRoleAsync(User user, string role);
 

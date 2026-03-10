@@ -10,10 +10,12 @@ function RoutinesSection({
   assignClientIdByRoutineId,
   assigningRoutineById,
   assigningRoutineToAllById,
+  deletingRoutineId,
   onOpenRoutine,
   onAssignClientIdChange,
   onAssignByClientId,
   onAssignToAll,
+  onDeleteRoutine,
   toLabel,
   formatValue,
 }) {
@@ -61,10 +63,12 @@ function RoutinesSection({
               assignClientId={assignClientIdByRoutineId[getEntityId(routine)]}
               assigningRoutineById={assigningRoutineById}
               assigningRoutineToAllById={assigningRoutineToAllById}
+              deletingRoutineId={deletingRoutineId}
               onAssignClientIdChange={onAssignClientIdChange}
               onOpen={onOpenRoutine}
               onAssignByClientId={onAssignByClientId}
               onAssignToAll={onAssignToAll}
+              onDelete={onDeleteRoutine}
               formatValue={formatValue}
             />
           ) : (

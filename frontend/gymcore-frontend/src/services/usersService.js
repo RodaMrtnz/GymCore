@@ -42,6 +42,14 @@ export function createTrainerUser(token, payload) {
   })
 }
 
+export function updateUser(token, id, payload) {
+  return apiRequest(`/api/users/${id}`, {
+    method: 'PUT',
+    token,
+    body: payload,
+  })
+}
+
 export function getAllTrainers(token) {
   return apiRequest('/api/users/trainers', { token })
 }

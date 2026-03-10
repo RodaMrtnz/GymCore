@@ -38,13 +38,27 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetAllTrainers()
         => Ok(await _users.GetAllTrainerResponsesAsync());
 
-    [Authorize(Roles = "Admin, Staff, Trainer")]
+    [Authorize(Roles = "Admin, Staff, Trainer, Client")]
     [HttpGet("client/{id:guid}")]
     public async Task<IActionResult> GetClientById(Guid id)
     {
         try
         {
-            var client = await _users.GetClientByIdAsync(id);
+            var isPrivileged = User.IsInRole("Admin") || User.IsInRole("Staff") || User.IsInRole("Trainer");
+
+            if (!isPrivileged)
+            {
+                if (!User.IsInRole("Client"))
+                    return Forbid();
+
+                var subClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (!Guid.TryParse(subClaim, out var authenticatedUserId) || authenticatedUserId != id)
+                    return Forbid();
+            }
+
+            var client = await _users.GetClientResponseByIdAsync(id);
             return client is null ? NotFound() : Ok(client);
         }
 
@@ -98,6 +112,40 @@ public class UsersController : ControllerBase
         {
             _logger.LogError(ex, "Unexpected error in Create");
 
+            return StatusCode(500, "An unexpected error occurred.");
+        }
+    }
+
+    [Authorize(Roles = "Client,Staff,Admin")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request)
+    {
+        try
+        {
+            var isPrivileged = User.IsInRole("Admin") || User.IsInRole("Staff");
+
+            if (!isPrivileged)
+            {
+                if (!User.IsInRole("Client"))
+                    return Forbid();
+
+                var subClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                    ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+                if (!Guid.TryParse(subClaim, out var authenticatedUserId) || authenticatedUserId != id)
+                    return Forbid();
+            }
+
+            var updated = await _users.UpdateAsync(id, request);
+            return Ok(updated);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in Update");
             return StatusCode(500, "An unexpected error occurred.");
         }
     }
